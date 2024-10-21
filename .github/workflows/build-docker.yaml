@@ -1,4 +1,4 @@
-name: Build and publish Docker image
+name: Build and publish Docker image and deply to AWS EB
 on:
   push:
     branches:
@@ -10,10 +10,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: build image
-        run: docker build -t mohamedshawky/react-test -f ./client/Dockerfile.dev ./client
-      - name: test image
-        run: docker run -e CI=true mohamedshawky/react-test npm test -- --coverage
+
+      - name: Docker login and build
+        run: |
+          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+          docker build -t mohamedshawky/react-test -f ./client/Dockerfile.dev ./client
+          docker run -e CI=true mohamedshawky/react-test npm test
       - name: build and push images
         run: |
           docker build -t mohamedshawky/multi-client ./client
@@ -25,3 +27,18 @@ jobs:
           docker push mohamedshawky/multi-nginx
           docker push mohamedshawky/multi-server
           docker push mohamedshawky/multi-worker
+
+      - name: Generate deployment package
+        run: zip -r deploy.zip . -x '*.git*'
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v18
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+          application_name: multi-docker
+          environment_name: Multi-docker-env
+          existing_bucket_name: elasticbeanstalk-eu-central-1-597710854260
+          region: eu-central-1
+          version_label: ${{ github.sha }}
+          deployment_package: deploy.zip
