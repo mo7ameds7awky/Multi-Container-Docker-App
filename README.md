@@ -1,5 +1,3 @@
-## **Revised README.md**
-
 ### **Project Overview**
 
 **This is a showcase project intended for demonstration purposes only.** It is not recommended for production use.
